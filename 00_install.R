@@ -79,24 +79,24 @@ create_project_structure <- function() {
   
   # Top-level directories
   dirs_top <- c(
-    "config",
-    "data/raw/m4",
-    "data/processed/features",
-    "data/metadata",
+ #   "config",
+  #  "data/raw/m4",
+  #  "data/processed/features",
+#    "data/metadata",
     "models",
     "src/r",
-    "src/python",
-    "scripts",
-    "results/intermediate",
-    "results/consolidated",
-    "results/logs/r",
-    "results/logs/python",
-    "figures/cd_diagrams",
-    "figures/other_plots",
-    "docs/paper/tex/sections",
-    "docs/paper/figures",
-    "docs/paper/notes",
-    "docs/lab_notebooks"
+    "src/python"
+ #   "scripts",
+#    "results/intermediate",
+ #   "results/consolidated",
+#    "results/logs/r",
+#    "results/logs/python",
+  #  "figures/cd_diagrams",
+  #  "figures/other_plots",
+  #  "docs/paper/tex/sections",
+  #  "docs/paper/figures",
+  #  "docs/paper/notes",
+  #  "docs/lab_notebooks"
   )
   
   for (d in dirs_top) {
