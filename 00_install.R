@@ -1,6 +1,11 @@
 # 00_install.R
 # Install required R packages and create the project folder structure
 
+install.packages("renv")
+renv::init(bare=TRUE)
+source("renv/activate.R")
+
+
 # ------------------------------
 # Helper: install CRAN packages
 # ------------------------------
@@ -159,3 +164,5 @@ run_bootstrap <- function() {
 # Execute when script is sourced
 # ------------------------------------------
 run_bootstrap()
+
+renv::snapshot()

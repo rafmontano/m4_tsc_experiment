@@ -94,7 +94,7 @@ cat("Detected period:", as.character(period), "→ frequency =", freq, "\n\n")
 
 n_series <- length(M4_clean)
 
-n_cores <- max(1, detectCores() - 1)
+n_cores <- max(1, detectCores(logical = FALSE))
 cat("Using", n_cores, "cores for REAL evaluation.\n")
 
 cl <- makeCluster(n_cores)

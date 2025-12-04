@@ -27,6 +27,11 @@ library(tsfeatures)
 library(forecast)
 library(tibble)
 
+library(parallel)
+library(future)
+library(furrr)
+
+
 source("src/r/features.R")
 
 # ---------------------------------------------------------------------
@@ -108,17 +113,30 @@ fforma_features <- c(
 # 6. Choose parallel or sequential mode for tsfeatures
 # ---------------------------------------------------------------------
 
+# Use fewer workers on Windows to avoid 'error writing to connection'
+n_cores <- future::availableCores()
+n_workers <- min(8L, max(1L, n_cores - 1L))
+
+message("[TSFEATURES] Using ", n_workers, " workers for parallel computation.")
+
+future::plan(multisession, workers = n_workers)
+
 use_parallel <- RUN_PARALLEL  # from 00_main.R
 
 if (use_parallel) {
   cat("Running tsfeatures() in PARALLEL via future::multisession...\n")
+  n_cores <- max(1, detectCores(logical = FALSE))
+  future::plan(multisession, workers = n_cores )
 } else {
   cat("Running tsfeatures() SEQUENTIALLY...\n")
+  n_cores<-1
+  future::plan(sequential)
 }
 
 # ---------------------------------------------------------------------
 # 7. Single call to tsfeatures() over ALL windows
 # ---------------------------------------------------------------------
+
 
 cat("Extracting FFORMA features for", length(ts_list), "windows...\n")
 

@@ -23,8 +23,8 @@ cat("====================\n\n")
 N_KEEP        <- 100        # How many M4 series to keep in 01_load_m4_subset.R
 LABEL_ID      <- 3          # Label to evaluate in scripts 10 + 11
 RUN_PARALLEL  <- TRUE       # Use parallel version of tsfeatures
-FORCE_RERUN   <- FALSE      # If TRUE, recompute even if files exist
-TARGET_PERIOD <- "Yearly" #"Quarterly"  # Change manually per run ("Yearly", "Monthly", ...)
+FORCE_RERUN   <- TRUE      # If TRUE, recompute even if files exist
+TARGET_PERIOD <- "Quarterly" #"Yearly" #"Quarterly"  # Change manually per run ("Yearly", "Monthly", ...)
 
 HORIZON       <- get_m4_horizon(TARGET_PERIOD)
 WINDOW_SIZE   <- get_window_size_from_h(TARGET_PERIOD)
@@ -72,6 +72,8 @@ if (!file.exists(subset_file) || FORCE_RERUN) {
   cat("[01] Skipped (", subset_file, " already exists)\n", sep = "")
 }
 
+#gc(full = TRUE)
+
 # ---------------------------------------------------------------------
 # 02: Clean M4 (tsclean)
 # ---------------------------------------------------------------------
@@ -83,6 +85,7 @@ if (!file.exists(subset_clean_file) || FORCE_RERUN) {
   cat("[02] Skipped (clean file exists: ", subset_clean_file, ")\n", sep = "")
 }
 
+#gc(full = TRUE)
 # ---------------------------------------------------------------------
 # 03: Rolling windows
 # ---------------------------------------------------------------------
@@ -93,6 +96,8 @@ if (!file.exists(windows_raw_file) || FORCE_RERUN) {
 } else {
   cat("[03] Skipped (", windows_raw_file, " already exists)\n", sep = "")
 }
+
+#gc(full = TRUE)
 
 # ---------------------------------------------------------------------
 # 04: Min-max and standardisation
@@ -116,6 +121,8 @@ if (!file.exists(threshold_file) || FORCE_RERUN) {
   cat("[05] Skipped (", threshold_file, " already exists)\n", sep = "")
 }
 
+#gc(full = TRUE)
+
 # ---------------------------------------------------------------------
 # 06: Labels l1–l4
 # ---------------------------------------------------------------------
@@ -127,6 +134,7 @@ if (!file.exists(labeled_file) || FORCE_RERUN) {
   cat("[06] Skipped (", labeled_file, " already exists)\n", sep = "")
 }
 
+#gc(full = TRUE)
 # ---------------------------------------------------------------------
 # 07+08: Compute tsfeatures (parallel optional)
 # ---------------------------------------------------------------------
@@ -139,6 +147,7 @@ if (!file.exists(features_file) || FORCE_RERUN) {
   cat("[07] Skipped (", features_file, " already exists)\n", sep = "")
 }
 
+#gc(full = TRUE)
 # ---------------------------------------------------------------------
 # 09: XGBoost hyperparameter tuning + model training
 # ---------------------------------------------------------------------
