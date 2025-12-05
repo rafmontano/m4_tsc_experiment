@@ -3,11 +3,12 @@
 # Master script that runs the pipeline end-to-end for ONE frequency
 #
 # You will run this script once per frequency, e.g.:
-#   - Yearly
-#   - Quarterly
-#   - Monthly
-#   - Weekly
-#   - Daily
+#   - Yearly - 23K - Done
+#   - Quarterly - 24k Done
+#   - Monthly - 48k 
+#   - Weekly -  359 - Done
+#   - Daily - 4k 
+#   - Hourly 414 - Done
 # =====================================================================
 
 source("src/r/utils.R")
@@ -20,11 +21,11 @@ cat("====================\n\n")
 # PARAMETERS (EDIT AS NEEDED BEFORE EACH RUN)
 # ---------------------------------------------------------------------
 
-N_KEEP        <- 100        # How many M4 series to keep in 01_load_m4_subset.R
+N_KEEP        <- 100000     # How many M4 series to keep in 01_load_m4_subset.R
 LABEL_ID      <- 3          # Label to evaluate in scripts 10 + 11
 RUN_PARALLEL  <- TRUE       # Use parallel version of tsfeatures
-FORCE_RERUN   <- TRUE      # If TRUE, recompute even if files exist
-TARGET_PERIOD <- "Quarterly" #"Yearly" #"Quarterly"  # Change manually per run ("Yearly", "Monthly", ...)
+FORCE_RERUN   <- FALSE      # If TRUE, recompute even if files exist
+TARGET_PERIOD <- "Monthly"  #"Yearly" #"Quarterly"  # Change manually per run ("Yearly", "Monthly", ...)
 
 HORIZON       <- get_m4_horizon(TARGET_PERIOD)
 WINDOW_SIZE   <- get_window_size_from_h(TARGET_PERIOD)
@@ -152,25 +153,38 @@ if (!file.exists(features_file) || FORCE_RERUN) {
 # 09: XGBoost hyperparameter tuning + model training
 # ---------------------------------------------------------------------
 
-cat("\n[09] Training XGBoost model...\n")
-source("src/r/09_hyper_xgb.R")
-
+if (!file.exists(features_file) || FORCE_RERUN) {
+    cat("\n[09] Training XGBoost model...\n")
+    source("src/r/09_hyper_xgb.R")
+} else {
+    cat("[09] Skipped (", features_file, " already exists)\n", sep = "")
+}
 # ---------------------------------------------------------------------
 # 10: Evaluate on internal test split
 # ---------------------------------------------------------------------
 
+
 cat("\n[10] Evaluating on held-out windows...\n")
 source("src/r/10_eval_xgb.R")
+
 
 # ---------------------------------------------------------------------
 # 11: Evaluate on REAL M4 last-window data
 # ---------------------------------------------------------------------
 
-cat("\n[11] Evaluating REAL last-window performance...\n")
-source("src/r/11_eval_real_xgb.R")
 
-cat("\n[11b] Exporting TSC real sktime-friendly...\n")
-source("src/r/11b_eval_real_tsc.R")
+if (FORCE_RERUN) {
+  cat("\n[11] Evaluating REAL last-window performance...\n")
+  source("src/r/11_eval_real_xgb.R")
+  cat("\n[11b] Exporting TSC real sktime-friendly...\n")
+  source("src/r/11b_eval_real_tsc.R")
+
+} else {
+  cat("[11] Skipped \n")
+  cat("\n[11b] \n")
+}  
+
+
 
 # ---------------------------------------------------------------------
 # 12: Baseline SMYL and FFORMA

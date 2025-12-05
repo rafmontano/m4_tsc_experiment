@@ -1,8 +1,9 @@
 # 00_install.R
 # Install required R packages and create the project folder structure
 
-install.packages("renv")
-renv::init(bare=TRUE)
+#install.packages("renv")
+#renv::init(bare=TRUE)
+
 source("renv/activate.R")
 
 
@@ -149,7 +150,7 @@ run_bootstrap <- function() {
   install_if_missing(cran_pkgs)
   
   # 2. Install M4comp2018 from GitHub release tar.gz
-  install_M4comp2018()
+ # install_M4comp2018()
   
   # 3. Install scmamp from GitHub
   install_scmamp()

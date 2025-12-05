@@ -114,19 +114,19 @@ fforma_features <- c(
 # ---------------------------------------------------------------------
 
 # Use fewer workers on Windows to avoid 'error writing to connection'
-n_cores <- future::availableCores()
-n_workers <- min(8L, max(1L, n_cores - 1L))
+#n_cores <- future::availableCores()
+#n_workers <- min(8L, max(1L, n_cores - 1L))
 
-message("[TSFEATURES] Using ", n_workers, " workers for parallel computation.")
+#message("[TSFEATURES] Using ", n_workers, " workers for parallel computation.")
 
-future::plan(multisession, workers = n_workers)
+#future::plan(multisession, workers = n_workers)
 
 use_parallel <- RUN_PARALLEL  # from 00_main.R
 
 if (use_parallel) {
   cat("Running tsfeatures() in PARALLEL via future::multisession...\n")
-  n_cores <- max(1, detectCores(logical = FALSE))
-  future::plan(multisession, workers = n_cores )
+#  n_cores <- max(1, detectCores(logical = FALSE))
+#  future::plan(multisession, workers = n_cores )
 } else {
   cat("Running tsfeatures() SEQUENTIALLY...\n")
   n_cores<-1
@@ -147,7 +147,7 @@ fforma_feature_matrix <- tsfeatures::tsfeatures(
   scale       = TRUE,
   trim        = FALSE,
   parallel    = use_parallel,
-  multiprocess = future::multisession,
+  multiprocess = future::multicore,#future::multisession,
   na.action   = na.pass
 )
 
