@@ -4,10 +4,24 @@
 #
 # You will run this script once per frequency, e.g.:
 #   - Yearly - 23K - Done
-#   - Quarterly - 24k Done
-#   - Monthly - 48k 
+#   - Quarterly - 24k - Done
+#   - Monthly - 48k - TBA
 #   - Weekly -  359 - Done
-#   - Daily - 4k 
+#   - Daily - 4k  - TBA
+#   - Hourly 414 - Done
+#    TARGET_PERIOD <- "Monthly"  #"Yearly" #"Quarterly"  # Change manually per run ("Yearly", "Monthly"
+# =====================================================================
+
+# =====================================================================
+# 00_main.R
+# Master script that runs the pipeline end-to-end for ONE frequency
+#
+# You will run this script once per frequency, e.g.:
+#   - Yearly - 23K - Done
+#   - Quarterly - 24k - Done
+#   - Monthly - 48k - TBA
+#   - Weekly -  359 - Done
+#   - Daily - 4k  - TBA
 #   - Hourly 414 - Done
 # =====================================================================
 
@@ -21,15 +35,18 @@ cat("====================\n\n")
 # PARAMETERS (EDIT AS NEEDED BEFORE EACH RUN)
 # ---------------------------------------------------------------------
 
-N_KEEP        <- 100000     # How many M4 series to keep in 01_load_m4_subset.R
-LABEL_ID      <- 3          # Label to evaluate in scripts 10 + 11
-RUN_PARALLEL  <- TRUE       # Use parallel version of tsfeatures
-FORCE_RERUN   <- FALSE      # If TRUE, recompute even if files exist
-TARGET_PERIOD <- "Monthly"  #"Yearly" #"Quarterly"  # Change manually per run ("Yearly", "Monthly", ...)
+N_KEEP        <- 100000       # How many M4 series to keep in 01_load_m4_subset.R
+LABEL_ID      <- 3         # Label to evaluate in scripts 10 + 11
+RUN_PARALLEL  <- TRUE      # Use parallel version of tsfeatures
+FORCE_RERUN   <- TRUE    # If TRUE, recompute even if files exist
+TARGET_PERIOD <- "Monthly" # "Yearly" / "Quarterly" / "Monthly" / ...
 
-HORIZON       <- get_m4_horizon(TARGET_PERIOD)
-WINDOW_SIZE   <- get_window_size_from_h(TARGET_PERIOD)
-TAG           <- freq_tag(TARGET_PERIOD)
+# ---------------------------------------------------------------------
+# Load common derived objects and file names
+# (HORIZON, WINDOW_SIZE, TAG, subset_file, etc.)
+# ---------------------------------------------------------------------
+
+source("src/r/0_common.R")
 
 cat("Parameters:\n")
 cat("  TARGET_PERIOD =", TARGET_PERIOD, "\n")
@@ -42,27 +59,6 @@ cat("  RUN_PARALLEL  =", RUN_PARALLEL, "\n")
 cat("  FORCE_RERUN   =", FORCE_RERUN, "\n\n")
 
 # ---------------------------------------------------------------------
-# Frequency-tagged file names (per period)
-# ---------------------------------------------------------------------
-
-subset_file       <- file.path("data", paste0("M4_subset_", TAG, ".rds"))
-subset_clean_file <- file.path("data", paste0("M4_subset_clean_", TAG, ".rds"))
-windows_raw_file  <- file.path("data", paste0("all_windows_raw_", TAG, ".rds"))
-windows_std_file  <- file.path("data", paste0("all_windows_std_", TAG, ".rds"))
-threshold_file    <- file.path("data", paste0("label_threshold_c_", TAG, ".rds"))
-labeled_file      <- file.path("data", paste0("all_windows_labeled_", TAG, ".rds"))
-features_file     <- file.path("data", paste0("all_windows_with_features_", TAG, ".rds"))
-
-# NOTE:
-#  - 01_load_m4_subset.R will write to subset_file
-#  - 02_clean_m4.R will write to subset_clean_file
-#  - 03_rolling_windows.R will write to windows_raw_file
-#  - 04_transformations.R will write to windows_std_file
-#  - 05_compute_c.R will write to threshold_file
-#  - 06_labels.R will write to labeled_file
-#  - 07_ts_features.R will write to features_file
-
-# ---------------------------------------------------------------------
 # 01: Load M4 subset
 # ---------------------------------------------------------------------
 
@@ -72,8 +68,7 @@ if (!file.exists(subset_file) || FORCE_RERUN) {
 } else {
   cat("[01] Skipped (", subset_file, " already exists)\n", sep = "")
 }
-
-#gc(full = TRUE)
+cleanup_step()
 
 # ---------------------------------------------------------------------
 # 02: Clean M4 (tsclean)
@@ -85,8 +80,8 @@ if (!file.exists(subset_clean_file) || FORCE_RERUN) {
 } else {
   cat("[02] Skipped (clean file exists: ", subset_clean_file, ")\n", sep = "")
 }
+cleanup_step()
 
-#gc(full = TRUE)
 # ---------------------------------------------------------------------
 # 03: Rolling windows
 # ---------------------------------------------------------------------
@@ -97,8 +92,7 @@ if (!file.exists(windows_raw_file) || FORCE_RERUN) {
 } else {
   cat("[03] Skipped (", windows_raw_file, " already exists)\n", sep = "")
 }
-
-#gc(full = TRUE)
+cleanup_step()
 
 # ---------------------------------------------------------------------
 # 04: Min-max and standardisation
@@ -110,6 +104,7 @@ if (!file.exists(windows_std_file) || FORCE_RERUN) {
 } else {
   cat("[04] Skipped (", windows_std_file, " already exists)\n", sep = "")
 }
+cleanup_step()
 
 # ---------------------------------------------------------------------
 # 05: Compute z and c
@@ -121,8 +116,7 @@ if (!file.exists(threshold_file) || FORCE_RERUN) {
 } else {
   cat("[05] Skipped (", threshold_file, " already exists)\n", sep = "")
 }
-
-#gc(full = TRUE)
+cleanup_step()
 
 # ---------------------------------------------------------------------
 # 06: Labels l1–l4
@@ -134,8 +128,8 @@ if (!file.exists(labeled_file) || FORCE_RERUN) {
 } else {
   cat("[06] Skipped (", labeled_file, " already exists)\n", sep = "")
 }
+cleanup_step()
 
-#gc(full = TRUE)
 # ---------------------------------------------------------------------
 # 07+08: Compute tsfeatures (parallel optional)
 # ---------------------------------------------------------------------
@@ -147,44 +141,42 @@ if (!file.exists(features_file) || FORCE_RERUN) {
 } else {
   cat("[07] Skipped (", features_file, " already exists)\n", sep = "")
 }
+cleanup_step()
 
-#gc(full = TRUE)
 # ---------------------------------------------------------------------
 # 09: XGBoost hyperparameter tuning + model training
 # ---------------------------------------------------------------------
 
 if (!file.exists(features_file) || FORCE_RERUN) {
-    cat("\n[09] Training XGBoost model...\n")
-    source("src/r/09_hyper_xgb.R")
+  cat("\n[09] Training XGBoost model...\n")
+  source("src/r/09_hyper_xgb.R")
 } else {
-    cat("[09] Skipped (", features_file, " already exists)\n", sep = "")
+  cat("[09] Skipped (", features_file, " already exists)\n", sep = "")
 }
+cleanup_step()
+
 # ---------------------------------------------------------------------
 # 10: Evaluate on internal test split
 # ---------------------------------------------------------------------
 
-
 cat("\n[10] Evaluating on held-out windows...\n")
 source("src/r/10_eval_xgb.R")
-
+cleanup_step()
 
 # ---------------------------------------------------------------------
 # 11: Evaluate on REAL M4 last-window data
 # ---------------------------------------------------------------------
-
 
 if (FORCE_RERUN) {
   cat("\n[11] Evaluating REAL last-window performance...\n")
   source("src/r/11_eval_real_xgb.R")
   cat("\n[11b] Exporting TSC real sktime-friendly...\n")
   source("src/r/11b_eval_real_tsc.R")
-
 } else {
   cat("[11] Skipped \n")
   cat("\n[11b] \n")
-}  
-
-
+}
+cleanup_step()
 
 # ---------------------------------------------------------------------
 # 12: Baseline SMYL and FFORMA
@@ -192,6 +184,7 @@ if (FORCE_RERUN) {
 
 cat("\n[12] Baseline SMYL and FFORMA...\n")
 source("src/r/12_baseline_fforma_smyl.R")
+cleanup_step()
 
 # ---------------------------------------------------------------------
 # Done!

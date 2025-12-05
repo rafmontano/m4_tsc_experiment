@@ -145,7 +145,11 @@ run_bootstrap <- function() {
     "xgboost",
     "rBayesianOptimization",
     "caret",
-    "factoextra"
+    "factoextra",
+    "future", 
+    "parallel",
+    "foreach",
+    "doParallel"
   )
   install_if_missing(cran_pkgs)
   
