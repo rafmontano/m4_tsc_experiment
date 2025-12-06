@@ -94,10 +94,11 @@ cat("Detected period:", as.character(period), "→ frequency =", freq, "\n\n")
 
 n_series <- length(M4_clean)
 
-n_cores <- max(1, detectCores() - 1)
+n_cores <- max(1, detectCores(logical = FALSE))
 cat("Using", n_cores, "cores for REAL evaluation.\n")
 
-cl <- makeCluster(n_cores)
+#cl <- makeCluster(n_cores)
+cl <- makeForkCluster(n_cores)
 
 # Make sure each worker has the same environment
 clusterEvalQ(cl, {
@@ -174,7 +175,6 @@ real_eval_rds <- sprintf("data/real_eval_l%d_%s_df.rds", LABEL_ID, TAG)
 saveRDS(real_eval_df, real_eval_rds)
 cat("Saved REAL evaluation RDS → ", real_eval_rds, "\n", sep = "")
 
-# ---------------------------------------------------------------------
 # 4) Align predictor columns (missing → 0)
 # ---------------------------------------------------------------------
 
@@ -186,6 +186,37 @@ for (col in predictor_cols) {
 
 X_real <- as.matrix(real_eval_df[, predictor_cols, drop = FALSE])
 y_real <- as.integer(real_eval_df$true_label)
+
+# 4a) Sanity check: remove NA / Inf before XGBoost --------------------
+
+# ensure numeric matrix
+storage.mode(X_real) <- "double"
+
+na_count  <- sum(is.na(X_real))
+inf_count <- sum(is.infinite(X_real))
+
+if (na_count > 0L || inf_count > 0L) {
+  cat(
+    "\n[WARN] X_real contains non-finite values:",
+    na_count, "NA and", inf_count, "Inf.\n",
+    "       Imputing them with column means (or 0 if all bad).\n"
+  )
+  
+  for (j in seq_len(ncol(X_real))) {
+    col <- X_real[, j]
+    bad <- !is.finite(col)
+    if (any(bad)) {
+      good_vals <- col[is.finite(col)]
+      repl <- if (length(good_vals) > 0L) mean(good_vals) else 0
+      col[bad] <- repl
+      X_real[, j] <- col
+    }
+  }
+  
+  # quick assert
+  stopifnot(!any(is.na(X_real)), !any(is.infinite(X_real)))
+}
+
 
 # ---------------------------------------------------------------------
 # 4b) Export evaluation dataset for Python / sktime / sklearn

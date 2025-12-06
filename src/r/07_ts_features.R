@@ -27,6 +27,10 @@ library(tsfeatures)
 library(forecast)
 library(tibble)
 
+library(parallel)
+library(foreach)
+library(doParallel)
+
 source("src/r/features.R")
 
 # ---------------------------------------------------------------------
@@ -74,15 +78,7 @@ FREQ <- infer_frequency(period)
 cat("Detected period:", period, "→ using ts frequency =", FREQ, "\n")
 
 # ---------------------------------------------------------------------
-# 4. Build ts list for all windows
-# ---------------------------------------------------------------------
-
-cat("Converting", length(all_windows_std$x), "windows to ts objects...\n")
-
-ts_list <- lapply(all_windows_std$x, function(vec) ts(vec, frequency = FREQ))
-
-# ---------------------------------------------------------------------
-# 5. Define the FFORMA feature set (aligned with calc_features logic)
+# 4. Define the FFORMA feature set (aligned with calc_features logic)
 # ---------------------------------------------------------------------
 
 fforma_features <- c(
@@ -105,36 +101,89 @@ fforma_features <- c(
 )
 
 # ---------------------------------------------------------------------
-# 6. Choose parallel or sequential mode for tsfeatures
+# 5. Prepare parallel backend (foreach) – NO tsfeatures internal parallel
 # ---------------------------------------------------------------------
 
-use_parallel <- RUN_PARALLEL  # from 00_main.R
+use_parallel <- isTRUE(RUN_PARALLEL)  # from 00_main.R
+cl <- NULL
 
 if (use_parallel) {
-  cat("Running tsfeatures() in PARALLEL via future::multisession...\n")
+  # You can later swap this for a "physical cores" helper if desired
+  n_cores <- max(1L, parallel::detectCores(logical = FALSE) - 1L)
+  
+  cat("[TSFEATURES] Using foreach with", n_cores, "workers...\n")
+  
+  cl <- parallel::makeCluster(n_cores, type = "PSOCK")
+  doParallel::registerDoParallel(cl)
+  
+  # Ensure workers have required packages and feature definitions
+  parallel::clusterEvalQ(cl, {
+    library(tsfeatures)
+    library(forecast)
+    library(tibble)
+  })
+  # If features.R defines additional helpers, source it on workers too
+  parallel::clusterEvalQ(cl, {
+    source("src/r/features.R")
+  })
 } else {
-  cat("Running tsfeatures() SEQUENTIALLY...\n")
+  cat("[TSFEATURES] Running SEQUENTIALLY (no parallel backend)...\n")
+  foreach::registerDoSEQ()
 }
 
 # ---------------------------------------------------------------------
-# 7. Single call to tsfeatures() over ALL windows
+# 6. Compute tsfeatures per window using foreach
 # ---------------------------------------------------------------------
 
-cat("Extracting FFORMA features for", length(ts_list), "windows...\n")
+n_windows <- length(all_windows_std$x)
+cat("Extracting FFORMA features for", n_windows, "windows...\n")
 
-fforma_feature_matrix <- tsfeatures::tsfeatures(
-  tslist      = ts_list,
-  features    = fforma_features,
-  # match calc_features() defaults: scale=TRUE, trim=FALSE, na.action=na.pass
-  scale       = TRUE,
-  trim        = FALSE,
-  parallel    = use_parallel,
-  multiprocess = future::multisession,
-  na.action   = na.pass
-)
+if (use_parallel) {
+  # Parallel version: build ts + compute features inside foreach
+  fforma_feature_matrix <- foreach::foreach(
+    vec = all_windows_std$x,
+    .combine  = rbind,
+    .packages = c("tsfeatures", "forecast", "tibble", "stats")
+  ) %dopar% {
+    ts_obj <- stats::ts(vec, frequency = FREQ)
+    
+    # tsfeatures expects a list of ts objects
+    tsfeatures::tsfeatures(
+      tslist     = list(ts_obj),
+      features   = fforma_features,
+      scale      = TRUE,
+      trim       = FALSE,
+      parallel   = FALSE,      # IMPORTANT: no internal tsfeatures parallel
+      na.action  = na.pass
+    )
+  }
+  
+} else {
+  # Sequential version using lapply + bind_rows
+  feature_list <- lapply(all_windows_std$x, function(vec) {
+    ts_obj <- stats::ts(vec, frequency = FREQ)
+    
+    tsfeatures::tsfeatures(
+      tslist     = list(ts_obj),
+      features   = fforma_features,
+      scale      = TRUE,
+      trim       = FALSE,
+      parallel   = FALSE,      # IMPORTANT: sequential inside tsfeatures
+      na.action  = na.pass
+    )
+  })
+  
+  fforma_feature_matrix <- dplyr::bind_rows(feature_list)
+}
+
+# Stop cluster if used
+if (!is.null(cl)) {
+  parallel::stopCluster(cl)
+  foreach::registerDoSEQ()
+}
 
 # ---------------------------------------------------------------------
-# 8. Post-processing: series_length, seasonal padding, NA → 0
+# 7. Post-processing: series_length, seasonal padding, NA → 0
 # ---------------------------------------------------------------------
 
 cat("Post-processing features (series_length, seasonal padding, NA → 0)...\n")
@@ -157,7 +206,7 @@ for (col in missing_seasonal) {
 }
 
 # ---------------------------------------------------------------------
-# 9. Sanity check and bind with labels
+# 8. Sanity check and bind with labels
 # ---------------------------------------------------------------------
 
 if (nrow(fforma_feature_matrix) != nrow(all_windows_labeled)) {
@@ -180,10 +229,9 @@ cat(
 )
 
 # ---------------------------------------------------------------------
-# 10. Save final dataset
+# 9. Save final dataset
 # ---------------------------------------------------------------------
 
 saveRDS(all_windows_with_features, features_file)
 
 cat("Saved →", features_file, "\n")
-

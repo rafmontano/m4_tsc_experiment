@@ -1,6 +1,12 @@
 # 00_install.R
 # Install required R packages and create the project folder structure
 
+#install.packages("renv")
+#renv::init(bare=TRUE)
+
+source("renv/activate.R")
+
+
 # ------------------------------
 # Helper: install CRAN packages
 # ------------------------------
@@ -139,12 +145,16 @@ run_bootstrap <- function() {
     "xgboost",
     "rBayesianOptimization",
     "caret",
-    "factoextra"
+    "factoextra",
+    "future", 
+    "parallel",
+    "foreach",
+    "doParallel"
   )
   install_if_missing(cran_pkgs)
   
   # 2. Install M4comp2018 from GitHub release tar.gz
-  install_M4comp2018()
+ # install_M4comp2018()
   
   # 3. Install scmamp from GitHub
   install_scmamp()
@@ -159,3 +169,5 @@ run_bootstrap <- function() {
 # Execute when script is sourced
 # ------------------------------------------
 run_bootstrap()
+
+renv::snapshot()
