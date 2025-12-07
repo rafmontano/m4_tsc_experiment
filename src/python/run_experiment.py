@@ -31,7 +31,7 @@ except Exception:
 
 LABEL_ID = 3          # 1, 2, 3, 4 → L1...L4
 FREQ_TAG = "y"        # e.g. "y", "q", "m", etc.
-NUMSERIES = None      # None for full dataset
+NUMSERIES = 1000 #None      # None for full dataset
 
 # ==========================================
 # PATHS (anchored at project root)
