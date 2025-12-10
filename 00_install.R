@@ -110,23 +110,23 @@ create_project_structure <- function() {
   }
   
   # Label-specific directories for processed labels, models, and intermediate results
-  for (lab in labels) {
+ # for (lab in labels) {
     # Labelled data
-    dir.create(file.path("data", "processed", "labels", lab),
-               recursive = TRUE, showWarnings = FALSE)
+    #dir.create(file.path("data", "processed", "labels", lab),
+    #           recursive = TRUE, showWarnings = FALSE)
     
     # Models: models/label_k/frequency
-    for (fr in freqs) {
-      dir.create(file.path("models", lab, fr),
-                 recursive = TRUE, showWarnings = FALSE)
-    }
+    #for (fr in freqs) {
+    #  dir.create(file.path("models", lab, fr),
+    #             recursive = TRUE, showWarnings = FALSE)
+    #}
     
     # Results intermediate: results/intermediate/label_k/frequency
-    for (fr in freqs) {
-      dir.create(file.path("results", "intermediate", lab, fr),
-                 recursive = TRUE, showWarnings = FALSE)
-    }
-  }
+    #for (fr in freqs) {
+    #  dir.create(file.path("results", "intermediate", lab, fr),
+    #             recursive = TRUE, showWarnings = FALSE)
+    #}
+#  }
   
   message("[STRUCTURE] Folder structure created (or already exists).")
 }

@@ -103,8 +103,8 @@ add_labels_four <- function(all_windows_std, c_value) {
 all_windows_labeled <- add_labels_four(all_windows_std, c_value)
 
 cat("Labels l1–l4 added.\n")
-cat("Example distribution (l1):\n")
-print(table(all_windows_labeled$l1))
+cat("Example distribution (l3):\n")
+print(table(all_windows_labeled$l3))
 
 # ---------------------------------------------------------------------
 # 4. Save labeled windows

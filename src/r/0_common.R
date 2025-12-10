@@ -23,6 +23,19 @@ threshold_file    <- file.path("data", paste0("label_threshold_c_", TAG, ".rds")
 labeled_file      <- file.path("data", paste0("all_windows_labeled_", TAG, ".rds"))
 features_file     <- file.path("data", paste0("all_windows_with_features_", TAG, ".rds"))
 
+
+# ---------------------------------------------------------------------
+# XGBoost model paths (shared by 00_main.R and 09_hyper_xgb.R)
+# ---------------------------------------------------------------------
+
+model_dir <- file.path("models", "xgb")
+if (!dir.exists(model_dir)) dir.create(model_dir, recursive = TRUE)
+
+model_path <- file.path(model_dir, sprintf("xgb_l%d_%s.model", LABEL_ID, TAG))
+meta_path  <- file.path(model_dir, sprintf("xgb_l%d_%s_meta.rds", LABEL_ID, TAG))
+
+
+
 # ---------------------------------------------------------------------
 # Helper: cleanup after each step
 #   - Keep configuration + file paths
@@ -38,7 +51,7 @@ cleanup_step <- function() {
     "subset_file", "subset_clean_file", "windows_raw_file",
     "windows_std_file", "threshold_file", "labeled_file",
     "features_file",
-    "cleanup_step"
+    "cleanup_step", "model_dir", "meta_path", "model_path"
   )
   
   all_objs <- ls(envir = .GlobalEnv)

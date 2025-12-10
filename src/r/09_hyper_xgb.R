@@ -44,6 +44,18 @@ cat("Training XGBoost model for label:", label_col, "\n")
 cat("Model will be saved to:", model_path, "\n")
 cat("Metadata will be saved to:", meta_path, "\n\n")
 
+# Optional flag from 00_main.R; default to FALSE if not defined
+if (!exists("FORCE_RERUN")) {
+  FORCE_RERUN <- FALSE
+}
+
+# Path to cache best hyperparameters (per label + tag)
+best_param_path <- file.path(
+  model_dir,
+  sprintf("xgb_l%d_%s_bestpar.rds", LABEL_ID, TAG)
+)
+
+
 # ---------------------------------------------------------------------
 # 1) Load the enriched dataset: windows + labels + features
 # ---------------------------------------------------------------------
@@ -167,6 +179,18 @@ cat(" → ", train_path, "\n", sep = "")
 cat(" → ", test_path,  "\n", sep = "")
 cat(" → ", predictor_path, "\n", sep = "")
 
+# --- CLEAN UP OBJECTS NOT NEEDED AFTER EXPORT --------------------------------
+rm(
+  train_export, test_export,            # big matrices
+  train_path, test_path, predictor_path,
+  feature_df_train, feature_vars,       # only used to detect constant_cols
+  all_windows_with_features,            # full dataset (train/test already created)
+  train_df, test_df,                    # we have X_train/X_test/y_train/y_test
+  all_ids, train_ids, test_ids,         # split ids no longer needed
+  export_dir                            # path no longer needed
+)
+gc(verbose = FALSE)
+
 # ---------------------------------------------------------------------
 # 5) Hyperparameter search (Bayesian Optimization) with class weights
 # ---------------------------------------------------------------------
@@ -237,19 +261,31 @@ xgb_hyperparameter_search <- function(
   )
 }
 
-opt_res <- xgb_hyperparameter_search(
-  X = X_train,
-  y = y_train,
-  w = w_train,
-  nfold = 3,
-  init_points = 4,
-  n_iter = 6,
-  nrounds_max = 250
-)
-
-best_params <- opt_res$Best_Par
-cat("\nBest parameters:\n")
-print(best_params)
+if (file.exists(best_param_path) && !isTRUE(FORCE_RERUN)) {
+  cat("\n[09] Found saved hyperparameters → loading from file and skipping search.\n")
+  best_params <- readRDS(best_param_path)
+} else {
+  cat("\n[09] Running BayesianOptimization for XGBoost hyperparameters...\n")
+  
+  opt_res <- xgb_hyperparameter_search(
+    X = X_train,
+    y = y_train,
+    w = w_train,
+    nfold = 3,
+    init_points = 4,
+    n_iter = 6,
+    nrounds_max = 250, 
+    nthread          = 8 
+  )
+  
+  best_params <- opt_res$Best_Par
+  cat("\nBest parameters:\n")
+  print(best_params)
+  
+  # Save hyperparameters for future runs
+  saveRDS(best_params, best_param_path)
+  cat("[09] Saved best_params → ", best_param_path, "\n", sep = "")
+}
 
 # ---------------------------------------------------------------------
 # 6) Train final model using best parameters + CV for best nrounds
@@ -268,7 +304,7 @@ params_final <- list(
   min_child_weight = best_params["min_child_weight"],
   subsample        = best_params["subsample"],
   colsample_bytree = best_params["colsample_bytree"],
-  nthread          = max(1, detectCores() - 1)
+  nthread          = 8 #max(1, detectCores() - 1)
 )
 
 cv_final <- xgb.cv(
@@ -331,4 +367,3 @@ saveRDS(meta_xgb, meta_path)
 
 cat("\nSaved model to ", model_path, "\n", sep = "")
 cat("Saved metadata to ", meta_path, "\n", sep = "")
-

@@ -38,8 +38,8 @@ cat("====================\n\n")
 N_KEEP        <- 100000       # How many M4 series to keep in 01_load_m4_subset.R
 LABEL_ID      <- 3         # Label to evaluate in scripts 10 + 11
 RUN_PARALLEL  <- TRUE      # Use parallel version of tsfeatures
-FORCE_RERUN   <- TRUE    # If TRUE, recompute even if files exist
-TARGET_PERIOD <- "Monthly" # "Yearly" / "Quarterly" / "Monthly" / ...
+FORCE_RERUN   <- FALSE   # If TRUE, recompute even if files exist
+TARGET_PERIOD <- "Daily" # "Yearly" / "Quarterly" / "Monthly" / ...
 
 # ---------------------------------------------------------------------
 # Load common derived objects and file names
@@ -147,7 +147,7 @@ cleanup_step()
 # 09: XGBoost hyperparameter tuning + model training
 # ---------------------------------------------------------------------
 
-if (!file.exists(features_file) || FORCE_RERUN) {
+if (!file.exists(model_path) || FORCE_RERUN) {
   cat("\n[09] Training XGBoost model...\n")
   source("src/r/09_hyper_xgb.R")
 } else {
