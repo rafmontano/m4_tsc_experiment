@@ -85,7 +85,7 @@ df_cd <- df %>%
   mutate(
     model = factor(
       model,
-      levels = c("FFORMA", "SMYL", "XGBoost", "InceptionTime", "ROCKET")
+      levels = c("FFORMA", "SMYL", "D-FFORMA", "InceptionTime", "ROCKET")
     )
   )
 
@@ -131,8 +131,8 @@ pdf(fig_path, width = 8, height = 4)
 plotCD(
   results.matrix = results_mat,
   alpha          = 0.05,
-  cex            = 1.0,
-  reverse        = TRUE
+  cex            = 0.75,
+  
 )
 dev.off()
 
