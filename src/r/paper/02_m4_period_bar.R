@@ -29,18 +29,29 @@ m4_meta <- purrr::map_dfr(
 )
 
 # ---------------------------------------------------------------------
-# 3) Counts & percentages
+# 3) Counts & percentages (M4 table order)
 # ---------------------------------------------------------------------
+
+# Desired chronological order, matching M4 Table 1
+#period_levels <- c("Yearly", "Quarterly", "Monthly",
+#                   "Weekly", "Daily", "Hourly")
+
+period_levels <- c("Hourly", "Daily", "Weekly",  
+                    "Monthly", "Quarterly", "Yearly")
+
+
 
 period_tbl <- m4_meta %>%
   count(period, name = "n_series") %>%
   mutate(
     total_series = sum(n_series),
     pct          = n_series / total_series,
-    pct_label    = sprintf("%.1f%%", 100 * pct)
+    n_fmt        = format(n_series, big.mark = ",", trim = TRUE),
+    pct_label    = sprintf("%.1f%%", 100 * pct),
+    label_text   = paste0(n_fmt, " (", pct_label, ")")
   ) %>%
-  arrange(desc(n_series)) %>%
-  mutate(period = factor(period, levels = period))
+  mutate(period = factor(period, levels = period_levels)) %>%
+  arrange(match(period, period_levels))
 
 # ---------------------------------------------------------------------
 # 4) Plot
@@ -50,7 +61,7 @@ p <- ggplot(period_tbl, aes(x = period, y = n_series)) +
   geom_col(width = 0.7, fill = "grey20") +
   coord_flip() +
   geom_text(
-    aes(label = paste0(n_series, " (", pct_label, ")")),
+    aes(label = label_text),
     hjust = -0.10,
     size  = 3.5
   ) +
@@ -59,7 +70,7 @@ p <- ggplot(period_tbl, aes(x = period, y = n_series)) +
     expand = expansion(mult = c(0, 0.25))
   ) +
   labs(
-    x = "Period",
+    x = "Frequency",
     y = "Number of series"
   ) +
   theme_minimal(base_size = 11) +
