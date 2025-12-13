@@ -7,23 +7,11 @@
 #   - Quarterly - 24k - Done
 #   - Monthly - 48k - TBA
 #   - Weekly -  359 - Done
-#   - Daily - 4k  - TBA
+#   - Daily - 4k  - Done
 #   - Hourly 414 - Done
 #    TARGET_PERIOD <- "Monthly"  #"Yearly" #"Quarterly"  # Change manually per run ("Yearly", "Monthly"
 # =====================================================================
 
-# =====================================================================
-# 00_main.R
-# Master script that runs the pipeline end-to-end for ONE frequency
-#
-# You will run this script once per frequency, e.g.:
-#   - Yearly - 23K - Done
-#   - Quarterly - 24k - Done
-#   - Monthly - 48k - TBA
-#   - Weekly -  359 - Done
-#   - Daily - 4k  - TBA
-#   - Hourly 414 - Done
-# =====================================================================
 
 source("src/r/utils.R")
 
@@ -38,8 +26,8 @@ cat("====================\n\n")
 N_KEEP        <- 100000       # How many M4 series to keep in 01_load_m4_subset.R
 LABEL_ID      <- 3         # Label to evaluate in scripts 10 + 11
 RUN_PARALLEL  <- TRUE      # Use parallel version of tsfeatures
-FORCE_RERUN   <- FALSE   # If TRUE, recompute even if files exist
-TARGET_PERIOD <- "Daily" # "Yearly" / "Quarterly" / "Monthly" / ...
+FORCE_RERUN   <- TRUE   # If TRUE, recompute even if files exist
+TARGET_PERIOD <-"Monthly" # "Hourly"   #"Weekly"   #"Daily" # "Yearly" / "Quarterly" / "Monthly" / ...
 
 # ---------------------------------------------------------------------
 # Load common derived objects and file names
@@ -167,15 +155,12 @@ cleanup_step()
 # 11: Evaluate on REAL M4 last-window data
 # ---------------------------------------------------------------------
 
-if (FORCE_RERUN) {
-  cat("\n[11] Evaluating REAL last-window performance...\n")
-  source("src/r/11_eval_real_xgb.R")
-  cat("\n[11b] Exporting TSC real sktime-friendly...\n")
-  source("src/r/11b_eval_real_tsc.R")
-} else {
-  cat("[11] Skipped \n")
-  cat("\n[11b] \n")
-}
+
+cat("\n[11] Evaluating REAL last-window performance...\n")
+source("src/r/11_eval_real_xgb.R")
+cat("\n[11b] Exporting TSC real sktime-friendly...\n")
+source("src/r/11b_eval_real_tsc.R")
+
 cleanup_step()
 
 # ---------------------------------------------------------------------
