@@ -1,7 +1,7 @@
 # =====================================================================
 # 03_m4_length_box_by_period_facet.R
 # Faceted boxplots of M4 series length by period, with median labels
-# Output: output/figures/m4_length_box_by_period_facet.pdf
+# Output: results/paper/figures/m4_length_box_by_period_facet.pdf
 # =====================================================================
 
 library(M4comp2018)
@@ -10,8 +10,8 @@ library(tidyverse)
 # ---------------------------------------------------------------------
 # 1) Output
 # ---------------------------------------------------------------------
+fig_dir  <- file.path("results", "paper", "figures")
 
-fig_dir  <- file.path("output", "figures")
 fig_path <- file.path(fig_dir, "m4_length_box_by_period_facet.pdf")
 
 dir.create(fig_dir, recursive = TRUE, showWarnings = FALSE)

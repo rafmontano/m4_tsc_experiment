@@ -1,7 +1,7 @@
 # =====================================================================
 # 01_m4_pivot_period_type.R
 # Pivot: rows = period, columns = type, values = number of series
-# Output: output/tables/m4_pivot_period_type.{csv,rds}
+# Output: results/paper/tables/m4_pivot_period_type.{csv,rds}
 # =====================================================================
 
 library(M4comp2018)
@@ -11,7 +11,7 @@ library(tidyverse)
 # 1) Output folders
 # ---------------------------------------------------------------------
 
-output_dir <- file.path("output", "tables")
+output_dir <- file.path("results", "paper", "tables")
 dir.create(output_dir, recursive = TRUE, showWarnings = FALSE)
 
 output_csv <- file.path(output_dir, "m4_pivot_period_type.csv")

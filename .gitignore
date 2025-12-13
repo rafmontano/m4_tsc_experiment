@@ -149,6 +149,8 @@ models/
 
 # Intermediate results (too large, regenerated)
 results/intermediate/
+results/
+results_mac/
 
 # Consolidated results (Excel, PDF outputs)
 results/consolidated/*.xlsx

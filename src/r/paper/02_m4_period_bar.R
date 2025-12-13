@@ -1,7 +1,7 @@
 # =====================================================================
 # 02_m4_period_bar.R
 # Horizontal bar chart of M4 series counts per period
-# Output: output/figures/m4_period_bar.pdf
+# Output: results/paper/figures/m4_period_bar.pdf
 # =====================================================================
 
 library(M4comp2018)
@@ -12,7 +12,8 @@ library(scales)
 # 1) Output directory
 # ---------------------------------------------------------------------
 
-fig_dir  <- file.path("output", "figures")
+
+fig_dir  <- file.path("results", "paper", "figures")
 fig_path <- file.path(fig_dir, "m4_period_bar.pdf")
 
 dir.create(fig_dir, recursive = TRUE, showWarnings = FALSE)
@@ -94,3 +95,4 @@ ggsave(
 )
 
 message("Bar chart saved to: ", fig_path)
+
