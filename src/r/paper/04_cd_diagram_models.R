@@ -85,7 +85,7 @@ df_cd <- df %>%
   mutate(
     model = factor(
       model,
-      levels = c("FFORMA", "SMYL", "D-FFORMA", "InceptionTime", "ROCKET")
+      levels = c("FFORMA", "SMYL", "XGBoost", "InceptionTime", "ROCKET", "RotF")
     )
   )
 
