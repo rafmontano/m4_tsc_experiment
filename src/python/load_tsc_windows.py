@@ -74,6 +74,9 @@ def load_tsc_windows(
     # 3) Coerce all features to numeric, handle garbage values
     coerced_df = feature_df.apply(pd.to_numeric, errors="coerce")
 
+    # NEW: defensively handle NaN and Inf (ROCKET cannot handle missing values)
+    coerced_df = coerced_df.replace([np.inf, -np.inf], np.nan).fillna(0.0)
+
     n_na = coerced_df.isna().sum().sum()
     if n_na > 0:
         # For now, replace with 0.0 and continue

@@ -5,7 +5,7 @@ from sktime.classification.distance_based import KNeighborsTimeSeriesClassifier
 from sktime.classification.sklearn import RotationForest
 
 
-def get_sktime_models(model_num: int = -1):
+def get_sktime_models(model_num: int = -1, n_jobs=1):
     """
     Return a dictionary of initialized sktime TSC models.
 
@@ -30,41 +30,50 @@ def get_sktime_models(model_num: int = -1):
     # -----------------------------
     models = {
         # 1) Bake-off baseline: 1-NN with DTW distance
-        "DTW": KNeighborsTimeSeriesClassifier(
-            n_neighbors=1,
-            distance="dtw",
-            # use default algorithm='brute' which is safe for DTW
-            n_jobs=-1,
+     #   "DTW": KNeighborsTimeSeriesClassifier(
+     #           n_neighbors=1,
+     #           weights="uniform",
+     #           algorithm="brute_incr",
+     #           distance="dtw",
+     #           distance_params={"window": 0.10},
+     #           n_jobs=n_jobs,
+     #   ),
+        "DTW":  KNeighborsTimeSeriesClassifier(
+                n_neighbors=1,
+                distance="dtw",  # fast baseline
+                distance_params={"window": 0.10},
+                algorithm="brute_incr",  # avoids precomputing full distance matrix
+                n_jobs=n_jobs,  # keep memory stable (increase later if safe)
         ),
 
-        # 2) Bake-off baseline: Rotation Forest (tabular, for FFORMA features)
-        #    Use 50 trees to match the bake-off paper.
-        "RotF": RotationForest(
-            n_estimators=50,
-            n_jobs=-1,
-            random_state=42,
-        ),
+    #    # 2) Bake-off baseline: Rotation Forest (tabular, for FFORMA features)
+    #    #    Use 50 trees to match the bake-off paper.
+    #    "RotF": RotationForest(
+    #        n_estimators=50,
+    #        n_jobs=n_jobs,
+    #        random_state=42,
+    #    ),
 
         # 3) ROCKET
-        "ROCKET": RocketClassifier(
-            num_kernels=int(512 * 1.4),
-            n_jobs=-1,
-            random_state=42,
-        ),
+   #     "ROCKET": RocketClassifier(
+   #         num_kernels=int(128), #512 * 1.4
+   #         n_jobs=n_jobs,
+   #         random_state=42,
+    #    ),
 
         # 4) InceptionTime
-        "InceptionTime": InceptionTimeClassifier(
-            #n_epochs=2,
-            batch_size=64,
-            random_state=42,
-            activation_inception="relu",
-            verbose=False,
-        ),
+     #   "InceptionTime": InceptionTimeClassifier(
+     #       #n_epochs=2,
+     #       batch_size=64,
+     #       random_state=42,
+     #       activation_inception="relu",
+     #       verbose=False,
+     #   ),
 
         # 5) HIVE-COTE (optional, currently commented out)
         # "HIVECOTEV2": HIVECOTEV2(
         #     time_limit_in_minutes=1.0,
-        #     n_jobs=-1,
+        #     n_jobs=n_jobs,
         #     random_state=42,
         #     verbose=0,
         # ),
