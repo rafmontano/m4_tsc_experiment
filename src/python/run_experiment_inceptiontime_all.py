@@ -40,7 +40,7 @@ except Exception:
 # ==========================================
 
 LABEL_ID = 3
-FREQ_TAGS = ["w", "h", "d", "y", "q", "m"]
+FREQ_TAGS = ["w", "h", "y", "q", "m", "d"]
 
 NUMSERIES = None              # None for full dataset; int for debugging
 TEST_SIZE = 0.2
@@ -52,13 +52,13 @@ RANDOM_STATE = 42
 #   Recommended operational values for large-scale rolling-window experiments
 #   are provided in comments for reference only.
 
-N_EPOCHS = 1500        # sktime default
+N_EPOCHS = 150         # sktime default 1500
 # recommended: 30–50 for large rolling-window datasets (no early stopping)
 
 BATCH_SIZE = 64        # sktime default
 # recommended: 128 if memory allows (faster convergence on large datasets)
 
-VERBOSE = False        # sktime default
+VERBOSE = True        # sktime default
 # recommended: True / 1 during long runs for progress visibility
 
 USE_RESIDUAL = True   # sktime default
@@ -69,8 +69,8 @@ N_FILTERS = 32         # sktime default
 BOTTLENECK_SIZE = 32   # sktime default
 
 # Scale controls (critical for huge frequencies; mirrors lessons learned from ROCKET/RotF)
-MAX_TRAIN_ROWS = 250_000      # cap train windows (None disables)
-MAX_TEST_ROWS = 200_000       # cap test windows (None disables)
+MAX_TRAIN_ROWS = 500_000      # cap train windows (None disables)
+MAX_TEST_ROWS = 500_000       # cap test windows (None disables)
 MAX_REAL_ROWS = None          # real is typically smaller; keep None unless needed
 
 # ==========================================

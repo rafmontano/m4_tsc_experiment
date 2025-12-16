@@ -1,0 +1,6 @@
+# Ubuntu NVIDIA (CUDA via TensorFlow extra)
+tensorflow[and-cuda]
+sktime
+numpy
+pandas
+scikit-learn
