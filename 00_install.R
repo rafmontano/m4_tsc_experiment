@@ -1,7 +1,7 @@
 # 00_install.R
 # Install required R packages and create the project folder structure
 
-#install.packages("renv")
+install.packages("renv")
 #renv::init(bare=TRUE)
 
 source("renv/activate.R")
