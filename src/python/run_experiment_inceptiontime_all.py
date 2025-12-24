@@ -40,8 +40,8 @@ except Exception:
 # ==========================================
 
 LABEL_ID = 3
-#FREQ_TAGS = ["w", "h", "y", "q", "m", "d"]
-FREQ_TAGS = ["m", "d"]
+FREQ_TAGS = ["w", "h", "y", "q", "m", "d"]
+#FREQ_TAGS = ["d"]
 
 NUMSERIES = None              # None for full dataset; int for debugging
 TEST_SIZE = 0.2
