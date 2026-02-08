@@ -42,7 +42,7 @@ if (!exists("TAG")) {
 if (!exists("subset_clean_file")) {
   stop("subset_clean_file not defined in 00_main.R.")
 }
-if (!exists("threshold_file")) {
+if (!exists("threshold_file_train")) {
   stop("threshold_file not defined in 00_main.R.")
 }
 
@@ -64,12 +64,12 @@ cat("Meta path :", meta_path, "\n\n")
 if (!file.exists(model_path)) stop("Model file not found: ", model_path)
 if (!file.exists(meta_path))  stop("Metadata file not found: ", meta_path)
 if (!file.exists(subset_clean_file)) stop("Clean M4 subset not found: ", subset_clean_file)
-if (!file.exists(threshold_file))    stop("Threshold file not found: ", threshold_file)
+if (!file.exists(threshold_file_train))    stop("Threshold file not found: ", threshold_file)
 
 model_xgb <- xgb.load(model_path)
 meta_xgb  <- readRDS(meta_path)
 M4_clean  <- readRDS(subset_clean_file)
-c_value   <- readRDS(threshold_file)
+c_value   <- readRDS(threshold_file_train)
 
 predictor_cols <- meta_xgb$predictor_cols
 

@@ -9,9 +9,9 @@
 #   - Weekly -  359 - Done
 #   - Daily - 4k  - Done
 #   - Hourly 414 - Done
-#    TARGET_PERIOD <- "Monthly"  #"Yearly" #"Quarterly"  # Change manually per run ("Yearly", "Monthly"
+#
+# TARGET_PERIOD <- "Monthly"  # Change manually per run
 # =====================================================================
-
 
 source("src/r/utils.R")
 
@@ -23,11 +23,11 @@ cat("====================\n\n")
 # PARAMETERS (EDIT AS NEEDED BEFORE EACH RUN)
 # ---------------------------------------------------------------------
 
-N_KEEP        <- 100000       # How many M4 series to keep in 01_load_m4_subset.R
-LABEL_ID      <- 3         # Label to evaluate in scripts 10 + 11
-RUN_PARALLEL  <- TRUE      # Use parallel version of tsfeatures
-FORCE_RERUN   <- TRUE   # If TRUE, recompute even if files exist
-TARGET_PERIOD <-"Monthly" # "Hourly"   #"Weekly"   #"Daily" # "Yearly" / "Quarterly" / "Monthly" / ...
+N_KEEP        <- 100000     # How many M4 series to keep in 01_load_m4_subset.R
+LABEL_ID      <- 3          # Label to evaluate in scripts 10 + 11
+RUN_PARALLEL  <- TRUE       # Use parallel version of tsfeatures
+FORCE_RERUN   <- FALSE       # If TRUE, recompute even if files exist
+TARGET_PERIOD <- "Weekly" #"Daily" #"Monthly"  # "Yearly" / "Quarterly" / "Monthly" / "Weekly" / "Daily" / "Hourly"
 
 # ---------------------------------------------------------------------
 # Load common derived objects and file names
@@ -44,7 +44,9 @@ cat("  WINDOW_SIZE   =", WINDOW_SIZE, "\n")
 cat("  HORIZON       =", HORIZON, "\n")
 cat("  LABEL_ID      =", LABEL_ID, "\n")
 cat("  RUN_PARALLEL  =", RUN_PARALLEL, "\n")
-cat("  FORCE_RERUN   =", FORCE_RERUN, "\n\n")
+cat("  FORCE_RERUN   =", FORCE_RERUN, "\n")
+cat("  Q  =", Q, "\n")
+cat("  STRIDE  =", STRIDE, "\n")
 
 # ---------------------------------------------------------------------
 # 01: Load M4 subset
@@ -95,14 +97,16 @@ if (!file.exists(windows_std_file) || FORCE_RERUN) {
 cleanup_step()
 
 # ---------------------------------------------------------------------
-# 05: Compute z and c
+# 05: Compute thresholds c_train and c_all
 # ---------------------------------------------------------------------
 
-if (!file.exists(threshold_file) || FORCE_RERUN) {
-  cat("\n[05] Computing threshold c...\n")
+if (!file.exists(threshold_file_train) ||
+    !file.exists(threshold_file_all) || FORCE_RERUN) {
+  cat("\n[05] Computing thresholds c_train and c_all...\n")
   source("src/r/05_compute_c.R")
 } else {
-  cat("[05] Skipped (", threshold_file, " already exists)\n", sep = "")
+  cat("[05] Skipped (", threshold_file_train, " and ", threshold_file_all,
+      " already exist)\n", sep = "")
 }
 cleanup_step()
 
@@ -119,16 +123,25 @@ if (!file.exists(labeled_file) || FORCE_RERUN) {
 cleanup_step()
 
 # ---------------------------------------------------------------------
-# 07+08: Compute tsfeatures (parallel optional)
+# 07: Compute tsfeatures (parallel optional)
 # ---------------------------------------------------------------------
 
 if (!file.exists(features_file) || FORCE_RERUN) {
   cat("\n[07] Computing TS features (parallel = ", RUN_PARALLEL, ")...\n", sep = "")
   source("src/r/07_ts_features.R")
-  source("src/r/07b_ts_windows_export.R")
 } else {
   cat("[07] Skipped (", features_file, " already exists)\n", sep = "")
 }
+
+# ---------------------------------------------------------------------
+# 08: Split + export (single source of truth for R + Python)
+# NOTE: this step creates/refreshes split artefacts and CSV exports.
+# If you want it always up-to-date, do not skip it based on features_file.
+# Control rerun via FORCE_RERUN or a dedicated FORCE_SPLIT flag if you add one.
+# ---------------------------------------------------------------------
+
+cat("\n[08] Splitting + exporting train/test (RDS + CSV)...\n")
+source("src/r/08_split_export.R")
 cleanup_step()
 
 # ---------------------------------------------------------------------
@@ -139,7 +152,7 @@ if (!file.exists(model_path) || FORCE_RERUN) {
   cat("\n[09] Training XGBoost model...\n")
   source("src/r/09_hyper_xgb.R")
 } else {
-  cat("[09] Skipped (", features_file, " already exists)\n", sep = "")
+  cat("[09] Skipped (", model_path, " already exists)\n", sep = "")
 }
 cleanup_step()
 
@@ -155,12 +168,11 @@ cleanup_step()
 # 11: Evaluate on REAL M4 last-window data
 # ---------------------------------------------------------------------
 
-
 cat("\n[11] Evaluating REAL last-window performance...\n")
 source("src/r/11_eval_real_xgb.R")
+
 cat("\n[11b] Exporting TSC real sktime-friendly...\n")
 source("src/r/11b_eval_real_tsc.R")
-
 cleanup_step()
 
 # ---------------------------------------------------------------------

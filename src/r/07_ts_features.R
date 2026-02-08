@@ -178,7 +178,7 @@ for (chunk_id in seq_len(n_chunks)) {
       tsfeatures::tsfeatures(
         tslist    = list(ts_obj),
         features  = fforma_features,
-        scale     = TRUE,
+        scale     = FALSE,
         trim      = FALSE,
         parallel  = FALSE,
         na.action = na.pass
@@ -192,7 +192,7 @@ for (chunk_id in seq_len(n_chunks)) {
       tsfeatures::tsfeatures(
         tslist    = list(ts_obj),
         features  = fforma_features,
-        scale     = TRUE,
+        scale     = FALSE,
         trim      = FALSE,
         parallel  = FALSE,
         na.action = na.pass

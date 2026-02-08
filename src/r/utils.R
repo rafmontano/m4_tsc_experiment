@@ -160,15 +160,21 @@ period_to_freq <- function(period) {
 # 3. Compute threshold c from distribution of |z|
 # ---------------------------------------------------------------------
 
+#compute_c <- function(z, q = 0.40) {
+#  z <- z[is.finite(z)]  # remove NA and infinite
+#  
+#  if (length(z) == 0L) {
+#    stop("No valid z-values available for computing c.")
+#  }
+#  
+#  abs_z <- abs(z)
+#  unname(quantile(abs_z, probs = q))
+#}
+
 compute_c <- function(z, q = 0.40) {
-  z <- z[is.finite(z)]  # remove NA and infinite
-  
-  if (length(z) == 0L) {
-    stop("No valid z-values available for computing c.")
-  }
-  
+  z <- z[is.finite(z)]
   abs_z <- abs(z)
-  unname(quantile(abs_z, probs = q))
+  unname(quantile(abs_z, probs = 1 - q))
 }
 
 # ---------------------------------------------------------------------

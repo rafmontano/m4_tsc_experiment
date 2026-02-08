@@ -13,7 +13,7 @@
 #   - WINDOW_SIZE
 #   - TAG               (e.g. "y", "q", "m", "w", "d", "h")
 #   - subset_clean_file (e.g. "data/M4_subset_clean_q.rds")
-#   - threshold_file    (e.g. "data/label_threshold_c_q.rds")
+#   - threshold_file_train    (e.g. "data/label_threshold_c_q.rds")
 #
 # Output:
 #   data/export/real_eval_tsc_l{LABEL_ID}_{TAG}.csv
@@ -40,8 +40,8 @@ if (!exists("TAG")) {
 if (!exists("subset_clean_file")) {
   stop("subset_clean_file not defined in 00_main.R.")
 }
-if (!exists("threshold_file")) {
-  stop("threshold_file not defined in 00_main.R.")
+if (!exists("threshold_file_train")) {
+  stop("threshold_file_train not defined in 00_main.R.")
 }
 
 label_col   <- paste0("l", LABEL_ID)
@@ -50,12 +50,12 @@ window_size <- WINDOW_SIZE
 if (!file.exists(subset_clean_file)) {
   stop("Clean M4 subset not found at: ", subset_clean_file)
 }
-if (!file.exists(threshold_file)) {
-  stop("Threshold file not found at: ", threshold_file)
+if (!file.exists(threshold_file_train)) {
+  stop("Threshold file not found at: ", threshold_file_train)
 }
 
 M4_clean <- readRDS(subset_clean_file)
-c_value  <- readRDS(threshold_file)
+c_value  <- readRDS(threshold_file_train)
 
 cat("11b: Loaded", length(M4_clean), "M4 series from", subset_clean_file, "\n")
 

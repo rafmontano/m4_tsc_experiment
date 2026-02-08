@@ -8,7 +8,7 @@
 #   - WINDOW_SIZE
 #   - TAG               (e.g. "y", "q", "m", "w", "d", "h")
 #   - subset_clean_file (e.g. "data/M4_subset_clean_q.rds")
-#   - threshold_file    (e.g. "data/label_threshold_c_q.rds")
+#   - threshold_file_train    (e.g. "data/label_threshold_c_q.rds")
 #
 # pt_ff[1, ] = Smyl (winner), pt_ff[2, ] = FFORMA (runner-up)
 # =====================================================================
@@ -36,8 +36,8 @@ if (!exists("TAG"))
 if (!exists("subset_clean_file"))
   stop("subset_clean_file not defined in 00_main.R.")
 
-if (!exists("threshold_file"))
-  stop("threshold_file not defined in 00_main.R.")
+if (!exists("threshold_file_train"))
+  stop("threshold_file_train not defined in 00_main.R.")
 
 label_col   <- paste0("l", LABEL_ID)
 window_size <- WINDOW_SIZE
@@ -49,10 +49,10 @@ cat("Running baseline Smyl/FFORMA for label:", label_col, " (TAG =", TAG, ")\n")
 # ---------------------------------------------------------------------
 
 if (!file.exists(subset_clean_file)) stop("Missing file:", subset_clean_file)
-if (!file.exists(threshold_file))    stop("Missing file:", threshold_file)
+if (!file.exists(threshold_file_train))    stop("Missing file:", threshold_file_train)
 
 M4_clean <- readRDS(subset_clean_file)
-c_value  <- readRDS(threshold_file)
+c_value  <- readRDS(threshold_file_train)
 
 cat("Loaded", length(M4_clean), "M4 series from", subset_clean_file, "\n")
 

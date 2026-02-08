@@ -9,7 +9,19 @@
 
 HORIZON     <- get_m4_horizon(TARGET_PERIOD)
 WINDOW_SIZE <- get_window_size_from_h(TARGET_PERIOD)
+# STRIDE <- WINDOW_SIZE + HORIZON   # non-overlapping 
+#STRIDE <- WINDOW_SIZE           # partial overlap
+STRIDE <- 1L                    # fully overlapping (not recommended)
+
 TAG         <- freq_tag(TARGET_PERIOD)
+Q            <- 0.60 # (Down = 30%, Neutral 40%, Up 30%)
+C_SEED       <- 123
+C_TRAIN_FRAC <- 0.70
+C_BOOT_B     <- 1000L
+
+SPLIT_SEED  <- 123
+TRAIN_FRAC  <- 0.80
+
 
 # ---------------------------------------------------------------------
 # Frequency-tagged file names (per period)
@@ -19,9 +31,11 @@ subset_file       <- file.path("data", paste0("M4_subset_", TAG, ".rds"))
 subset_clean_file <- file.path("data", paste0("M4_subset_clean_", TAG, ".rds"))
 windows_raw_file  <- file.path("data", paste0("all_windows_raw_", TAG, ".rds"))
 windows_std_file  <- file.path("data", paste0("all_windows_std_", TAG, ".rds"))
-threshold_file    <- file.path("data", paste0("label_threshold_c_", TAG, ".rds"))
+threshold_file_train <- file.path("data", paste0("label_threshold_c_train_", TAG, ".rds"))
+threshold_file_all <- file.path("data", paste0("label_threshold_c_all_", TAG, ".rds"))
 labeled_file      <- file.path("data", paste0("all_windows_labeled_", TAG, ".rds"))
 features_file     <- file.path("data", paste0("all_windows_with_features_", TAG, ".rds"))
+
 
 
 # ---------------------------------------------------------------------
@@ -47,11 +61,14 @@ cleanup_step <- function() {
   # Names we explicitly want to keep
   keep_explicit <- c(
     "N_KEEP", "LABEL_ID", "RUN_PARALLEL", "FORCE_RERUN",
-    "TARGET_PERIOD", "HORIZON", "WINDOW_SIZE", "TAG",
+    "TARGET_PERIOD", "HORIZON", "WINDOW_SIZE", "TAG","STRIDE", 
     "subset_file", "subset_clean_file", "windows_raw_file",
-    "windows_std_file", "threshold_file", "labeled_file",
+    "windows_std_file",  "labeled_file",
     "features_file",
-    "cleanup_step", "model_dir", "meta_path", "model_path"
+    "threshold_file_train", "threshold_file_all",
+    "cleanup_step", "model_dir", "meta_path", "model_path", 
+    "Q", "C_SEED", "C_TRAIN_FRAC", 
+    "C_BOOT_B", "SPLIT_SEED", "TRAIN_FRAC"
   )
   
   all_objs <- ls(envir = .GlobalEnv)
