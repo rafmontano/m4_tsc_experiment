@@ -26,7 +26,7 @@ cat("====================\n\n")
 N_KEEP        <- 100000     # How many M4 series to keep in 01_load_m4_subset.R
 LABEL_ID      <- 3          # Label to evaluate in scripts 10 + 11
 RUN_PARALLEL  <- TRUE       # Use parallel version of tsfeatures
-FORCE_RERUN   <- FALSE       # If TRUE, recompute even if files exist
+FORCE_RERUN   <- FALSE      # If TRUE, recompute even if files exist
 TARGET_PERIOD <- "Weekly" #"Daily" #"Monthly"  # "Yearly" / "Quarterly" / "Monthly" / "Weekly" / "Daily" / "Hourly"
 
 # ---------------------------------------------------------------------

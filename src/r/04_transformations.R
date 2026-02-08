@@ -14,8 +14,12 @@
 library(dplyr)
 
 # ---------------------------------------------------------------------
-# 1. Load rolling windows from script 03
+# 0) Sanity checks
 # ---------------------------------------------------------------------
+
+if (!exists("scale_pair_minmax_std")) {
+  stop("scale_pair_minmax_std() not found. Ensure src/r/utils.R is sourced before running 04_transformations.R.")
+}
 
 if (!file.exists(windows_raw_file)) {
   stop(
@@ -24,12 +28,16 @@ if (!file.exists(windows_raw_file)) {
   )
 }
 
+# ---------------------------------------------------------------------
+# 1) Load rolling windows from script 03
+# ---------------------------------------------------------------------
+
 all_windows <- readRDS(windows_raw_file)
 cat("Loaded", nrow(all_windows), "rolling windows from", windows_raw_file, "\n")
 
 # ---------------------------------------------------------------------
-# 2. Apply joint min–max + standardisation per row
-#    Uses scale_pair_minmax_std() from utils.R
+# 2) Apply joint min–max + standardisation per row
+#    scale_pair_minmax_std(x, xx) returns list(x_std=..., xx_std=...)
 # ---------------------------------------------------------------------
 
 all_windows_std <- all_windows %>%
@@ -43,9 +51,8 @@ all_windows_std <- all_windows %>%
 cat("Applied joint min–max + standardisation.\n")
 
 # ---------------------------------------------------------------------
-# 3. Save transformed dataset for downstream scripts
+# 3) Save transformed dataset for downstream scripts
 # ---------------------------------------------------------------------
 
 saveRDS(all_windows_std, file = windows_std_file)
-
 cat("Saved transformed windows to:", windows_std_file, "\n")

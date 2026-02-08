@@ -82,15 +82,13 @@ standardise_vec <- function(v) {
 }
 
 # Joint scaling for a window/horizon pair:
-# 1) compute min/max on x
-# 2) min–max scale x and xx with that range
-# 3) standardise with mean/sd from x_mm
-# 4) return x_std and xx_std
-scale_pair_minmax_std <- function(x, xx = NULL, train = TRUE) {
+# - Always returns x_std
+# - Returns xx_std only if xx is provided (otherwise NULL)
+scale_pair_minmax_std <- function(x, xx = NULL) {
   x  <- as.numeric(x)
   xx <- if (!is.null(xx)) as.numeric(xx) else NULL
   
-  # min–max using x
+  # Min–max using x only
   min_x   <- min(x, na.rm = TRUE)
   max_x   <- max(x, na.rm = TRUE)
   range_x <- max_x - min_x
@@ -103,7 +101,7 @@ scale_pair_minmax_std <- function(x, xx = NULL, train = TRUE) {
     xx_mm <- if (!is.null(xx)) (xx - min_x) / range_x else NULL
   }
   
-  # standardise using x_mm
+  # Standardise using x_mm only
   mean_x <- mean(x_mm, na.rm = TRUE)
   sd_x   <- sd(x_mm, na.rm = TRUE)
   
@@ -115,12 +113,9 @@ scale_pair_minmax_std <- function(x, xx = NULL, train = TRUE) {
     xx_std <- if (!is.null(xx_mm)) (xx_mm - mean_x) / sd_x else NULL
   }
   
-  if (train) {
-    list(x_std = x_std, xx_std = xx_std)
-  } else {
-    list(x_std = x_std, xx_std = NULL)
-  }
+  list(x_std = x_std, xx_std = xx_std)
 }
+
 
 # ------------------------------------------------------------
 # Frequency → file tag

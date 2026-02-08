@@ -15,19 +15,17 @@ library(parallel)
 # 0) Required globals + paths
 # ---------------------------------------------------------------------
 
-if (!exists("LABEL_ID")) stop("LABEL_ID is not defined. Run 00_main.R first.")
-if (!exists("TAG"))      stop("TAG is not defined. Run 00_main.R first.")
-if (!exists("features_file")) stop("features_file is not defined in 00_main.R")
+# Required globals from 00_main.R + 0_common.R
+req <- c("LABEL_ID", "TAG", "features_file", "model_dir", "model_path", "meta_path", "FORCE_RERUN")
+missing <- req[!vapply(req, exists, logical(1))]
+if (length(missing) > 0L) {
+  stop("Missing required globals. Run 00_main.R first. Missing: ", paste(missing, collapse = ", "))
+}
 
 label_col <- paste0("l", LABEL_ID)
 
-model_dir <- file.path("models", "xgb")
+# model_dir/model_path/meta_path are defined in 0_common.R (single source of truth)
 if (!dir.exists(model_dir)) dir.create(model_dir, recursive = TRUE)
-
-model_path <- file.path(model_dir, sprintf("xgb_l%d_%s.model", LABEL_ID, TAG))
-meta_path  <- file.path(model_dir, sprintf("xgb_l%d_%s_meta.rds", LABEL_ID, TAG))
-
-if (!exists("FORCE_RERUN")) FORCE_RERUN <- FALSE
 
 best_param_path <- file.path(model_dir, sprintf("xgb_l%d_%s_bestpar.rds", LABEL_ID, TAG))
 
