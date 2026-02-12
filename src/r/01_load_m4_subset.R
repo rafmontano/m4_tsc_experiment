@@ -9,12 +9,13 @@
 #   - subset_file    (full path, e.g. "data/M4_subset_q.rds")
 # =====================================================================
 
-library(M4comp2018)
+#library(M4comp2018)
 
 # ---------------------------------------------------------------------
 # 1. Load full M4 dataset
 # ---------------------------------------------------------------------
-data(M4)
+#data(M4)
+M4 <- readRDS("data/qa/M4_qa.rds")
 
 cat("Total M4 series:", length(M4), "\n")
 

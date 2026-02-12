@@ -47,6 +47,8 @@ C_BOOT_B     <- 1000L
 SPLIT_SEED <- 123
 TRAIN_FRAC <- 0.80
 
+USE_CLASS_WEIGHTS <- FALSE  # set TRUE to restore weighting later
+
 # ---------------------------------------------------------------------
 # Frequency-tagged file names (per period)
 # ---------------------------------------------------------------------
@@ -87,7 +89,7 @@ cleanup_step <- function() {
     # derived/config
     "HORIZON", "WINDOW_SIZE", "STRIDE", "TAG",
     "Q", "C_SEED", "C_TRAIN_FRAC", "C_BOOT_B",
-    "SPLIT_SEED", "TRAIN_FRAC",
+    "SPLIT_SEED", "TRAIN_FRAC", "USE_CLASS_WEIGHTS",
     
     # file paths
     "subset_file", "subset_clean_file",

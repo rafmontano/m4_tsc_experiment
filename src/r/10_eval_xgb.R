@@ -155,3 +155,4 @@ print(metrics_df)
 cat("\nOverall Accuracy:", round(as.numeric(cm$overall["Accuracy"]), 4), "\n")
 cat("Kappa:",            round(as.numeric(cm$overall["Kappa"]), 4), "\n")
 cat("Macro F1:",         round(macro_f1, 4), "\n")
+

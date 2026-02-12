@@ -81,8 +81,9 @@ standardise_vec <- function(v) {
   (v - m) / s
 }
 
-# Joint scaling for a window/horizon pair:
-# - Always returns x_std
+# Joint scaling for a window/horizon pair (SAFE):
+# - Min–max stats computed from x only
+# - Standardisation stats computed from x_mm only
 # - Returns xx_std only if xx is provided (otherwise NULL)
 scale_pair_minmax_std <- function(x, xx = NULL) {
   x  <- as.numeric(x)
@@ -97,7 +98,7 @@ scale_pair_minmax_std <- function(x, xx = NULL) {
     x_mm  <- rep(0, length(x))
     xx_mm <- if (!is.null(xx)) rep(0, length(xx)) else NULL
   } else {
-    x_mm  <- (x  - min_x) / range_x
+    x_mm  <- (x - min_x) / range_x
     xx_mm <- if (!is.null(xx)) (xx - min_x) / range_x else NULL
   }
   
@@ -115,6 +116,7 @@ scale_pair_minmax_std <- function(x, xx = NULL) {
   
   list(x_std = x_std, xx_std = xx_std)
 }
+
 
 
 # ------------------------------------------------------------

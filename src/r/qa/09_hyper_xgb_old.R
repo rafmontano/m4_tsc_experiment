@@ -3,7 +3,17 @@
 # Hyperparameter search + training for XGBoost (labels l1–l4)
 # Multiclass (0 = Down, 1 = Neutral, 2 = Up)
 #
-# Uses train/test split artefacts created by 08_split_export.R
+# Assumes in 00_main.R:
+#   - LABEL_ID       (1..4)
+#   - TAG            (e.g. "y", "q", "m", "w", "d", "h")
+#   - features_file  (e.g. "data/all_windows_with_features_q.rds")
+#
+# Outputs:
+#   - models/xgb/xgb_l{LABEL_ID}_{TAG}.model
+#   - models/xgb/xgb_l{LABEL_ID}_{TAG}_meta.rds
+#   - data/export/train_l{LABEL_ID}_{TAG}.csv
+#   - data/export/test_l{LABEL_ID}_{TAG}.csv
+#   - data/export/predictors_l{LABEL_ID}_{TAG}.csv
 # =====================================================================
 
 library(dplyr)
@@ -12,43 +22,58 @@ library(rBayesianOptimization)
 library(parallel)
 
 # ---------------------------------------------------------------------
-# 0) Required globals + paths
+# 0) Label + paths
 # ---------------------------------------------------------------------
 
-# Required globals from 00_main.R + 0_common.R
-req <- c("LABEL_ID", "TAG", "features_file", "model_dir", "model_path", "meta_path", "FORCE_RERUN")
-missing <- req[!vapply(req, exists, logical(1))]
-if (length(missing) > 0L) {
-  stop("Missing required globals. Run 00_main.R first. Missing: ", paste(missing, collapse = ", "))
+if (!exists("LABEL_ID")) {
+  stop("LABEL_ID is not defined. Run 00_main.R first.")
+}
+if (!exists("TAG")) {
+  stop("TAG is not defined. Ensure freq_tag(TARGET_PERIOD) was computed in 00_main.R.")
 }
 
 label_col <- paste0("l", LABEL_ID)
 
-# model_dir/model_path/meta_path are defined in 0_common.R (single source of truth)
+model_dir <- file.path("models", "xgb")
 if (!dir.exists(model_dir)) dir.create(model_dir, recursive = TRUE)
 
-best_param_path <- file.path(model_dir, sprintf("xgb_l%d_%s_bestpar.rds", LABEL_ID, TAG))
-
-split_dir <- file.path("data", "splits")
-train_rds_path <- file.path(split_dir, sprintf("train_l%d_%s.rds", LABEL_ID, TAG))
-test_rds_path  <- file.path(split_dir, sprintf("test_l%d_%s.rds",  LABEL_ID, TAG))
-meta_rds_path  <- file.path(split_dir, sprintf("split_meta_l%d_%s.rds", LABEL_ID, TAG))
+model_path <- file.path(model_dir, sprintf("xgb_l%d_%s.model", LABEL_ID, TAG))
+meta_path  <- file.path(model_dir, sprintf("xgb_l%d_%s_meta.rds", LABEL_ID, TAG))
 
 cat("Training XGBoost model for label:", label_col, "\n")
 cat("Model will be saved to:", model_path, "\n")
 cat("Metadata will be saved to:", meta_path, "\n\n")
 
+# Optional flag from 00_main.R; default to FALSE if not defined
+if (!exists("FORCE_RERUN")) {
+  FORCE_RERUN <- FALSE
+}
+
+# Path to cache best hyperparameters (per label + tag)
+best_param_path <- file.path(
+  model_dir,
+  sprintf("xgb_l%d_%s_bestpar.rds", LABEL_ID, TAG)
+)
+
+
 # ---------------------------------------------------------------------
-# 1) Load full dataset (only to derive predictor_cols consistently)
+# 1) Load the enriched dataset: windows + labels + features
 # ---------------------------------------------------------------------
 
+if (!exists("features_file")) {
+  stop("features_file is not defined in 00_main.R")
+}
+
 if (!file.exists(features_file)) {
-  stop("File not found: ", features_file, "\nRun 07_ts_features.R first.")
+  stop("File not found: ", features_file,
+       "\nRun 07_ts_features.R first.")
 }
 
 all_windows_with_features <- readRDS(features_file)
-cat("Loaded dataset:", nrow(all_windows_with_features), "rows from", features_file, "\n")
+cat("Loaded dataset:", nrow(all_windows_with_features),
+    "rows from", features_file, "\n")
 
+# Drop list-columns if still present
 if ("x"  %in% names(all_windows_with_features)) all_windows_with_features$x  <- NULL
 if ("xx" %in% names(all_windows_with_features)) all_windows_with_features$xx <- NULL
 
@@ -56,84 +81,65 @@ if (!label_col %in% names(all_windows_with_features)) {
   stop("Label column ", label_col, " not found in dataset.")
 }
 
+# ---------------------------------------------------------------------
+# 2) Define predictor columns (drop labels + metadata)
+# ---------------------------------------------------------------------
+
 predictor_cols <- setdiff(
   colnames(all_windows_with_features),
   c("l1", "l2", "l3", "l4", "series_id", "series_name")
 )
+
 cat("Number of predictor features before filtering:", length(predictor_cols), "\n")
 
 # ---------------------------------------------------------------------
-# 2) Load train/test split (single source of truth)
+# 3) Train/test split based on series_id (avoid leakage)
 # ---------------------------------------------------------------------
 
-if (!file.exists(train_rds_path) || !file.exists(test_rds_path) || !file.exists(meta_rds_path)) {
-  stop(
-    "Missing split artefacts in data/splits.\n",
-    "Expected:\n",
-    " - ", train_rds_path, "\n",
-    " - ", test_rds_path,  "\n",
-    " - ", meta_rds_path,  "\n",
-    "Run 08_split_export.R first."
-  )
-}
+split_seed <- 123  # keep consistent with eval scripts
+set.seed(split_seed)
 
-train_df   <- readRDS(train_rds_path)
-test_df    <- readRDS(test_rds_path)
-split_meta <- readRDS(meta_rds_path)
+all_ids   <- unique(all_windows_with_features$series_id)
+train_ids <- sample(all_ids, size = floor(0.8 * length(all_ids)))
+test_ids  <- setdiff(all_ids, train_ids)
 
-cat("[09] Loaded split artefacts:\n")
-cat("  -> ", train_rds_path, "\n", sep = "")
-cat("  -> ", test_rds_path,  "\n", sep = "")
-cat("  -> ", meta_rds_path,  "\n", sep = "")
-cat("[09] Train windows:", nrow(train_df), " | Test windows:", nrow(test_df), "\n")
+train_df <- dplyr::filter(all_windows_with_features, series_id %in% train_ids)
+test_df  <- dplyr::filter(all_windows_with_features, series_id %in% test_ids)
 
-if (!label_col %in% names(train_df) || !label_col %in% names(test_df)) {
-  stop("Label column ", label_col, " missing from train/test split RDS.")
-}
+cat("Train windows:", nrow(train_df), " | Test windows:", nrow(test_df), "\n")
 
 # ---------------------------------------------------------------------
-# 3) Drop constant features based ONLY on train set
+# 4) Drop useless (constant) features — based ONLY on train set
 # ---------------------------------------------------------------------
 
 feature_df_train <- train_df[, predictor_cols, drop = FALSE]
+
 feature_vars  <- sapply(feature_df_train, function(col) var(col, na.rm = TRUE))
 constant_cols <- names(feature_vars[feature_vars == 0 | is.na(feature_vars)])
 
-if (length(constant_cols) > 0L) {
+if (length(constant_cols) > 0) {
   message("Removing constant columns: ", paste(constant_cols, collapse = ", "))
   predictor_cols <- setdiff(predictor_cols, constant_cols)
 }
 
+# Apply feature set to both train and test
 X_train <- as.matrix(train_df[, predictor_cols, drop = FALSE])
 X_test  <- as.matrix(test_df[,  predictor_cols, drop = FALSE])
-
-# REQUIRED: xgboost cannot handle Inf / NaN
-X_train[!is.finite(X_train)] <- NA_real_
-X_test[!is.finite(X_test)]   <- NA_real_
 
 y_train <- as.integer(train_df[[label_col]])
 y_test  <- as.integer(test_df[[label_col]])
 
-if (length(y_train) == 0L) stop("[09] Empty training set after split.")
-if (length(unique(y_train)) < 2L) stop("[09] y_train has < 2 classes. CV/BO cannot run.")
-
-# REQUIRED: xgboost multiclass expects labels in {0,1,...,K-1}
-min_y <- min(y_train, na.rm = TRUE)
-if (is.finite(min_y) && min_y == 1L) {
-  y_train <- y_train - 1L
-  y_test  <- y_test  - 1L
-}
-
 cat("Final number of predictor features:", length(predictor_cols), "\n")
 
 # ---------------------------------------------------------------------
-# 4) Class weights
+# 4.1) Class weights for imbalance
 # ---------------------------------------------------------------------
 
-class_counts <- table(y_train)
-K <- length(class_counts)
-N <- length(y_train)
+class_counts <- table(y_train)           # counts per class 0,1,2
+K            <- length(class_counts)
+N            <- length(y_train)
 
+# Simple inverse-frequency weights: N / (K * n_k)
 class_weights <- N / (K * as.numeric(class_counts))
 names(class_weights) <- names(class_counts)
 
@@ -142,34 +148,57 @@ print(class_counts)
 cat("Class weights used:\n")
 print(class_weights)
 
-w_train <- if (USE_CLASS_WEIGHTS) class_weights[as.character(y_train)] else rep(1, length(y_train))
+# Instance-level weights aligned with y_train
+w_train <- class_weights[as.character(y_train)]
 
 # ---------------------------------------------------------------------
-# 4.5) Export TRAIN/TEST matrices to CSV (unchanged behaviour)
+# 4.5) Export TRAIN/TEST matrices to CSV for external tools (e.g. Python sktime)
 # ---------------------------------------------------------------------
 
 export_dir <- file.path("data", "export")
 if (!dir.exists(export_dir)) dir.create(export_dir, recursive = TRUE)
 
+train_export <- cbind(label = y_train, X_train)
+test_export  <- cbind(label = y_test,  X_test)
+
 train_path     <- file.path(export_dir, sprintf("train_l%d_%s.csv",      LABEL_ID, TAG))
 test_path      <- file.path(export_dir, sprintf("test_l%d_%s.csv",       LABEL_ID, TAG))
 predictor_path <- file.path(export_dir, sprintf("predictors_l%d_%s.csv", LABEL_ID, TAG))
 
-write.csv(cbind(label = y_train, X_train), train_path, row.names = FALSE)
-write.csv(cbind(label = y_test,  X_test),  test_path,  row.names = FALSE)
-write.csv(data.frame(feature = predictor_cols), predictor_path, row.names = FALSE)
+write.csv(train_export, train_path, row.names = FALSE)
+write.csv(test_export,  test_path,  row.names = FALSE)
+
+write.csv(
+  data.frame(feature = predictor_cols),
+  predictor_path,
+  row.names = FALSE
+)
 
 cat("\nExported data for Python/sklearn/sktime:\n")
 cat(" → ", train_path, "\n", sep = "")
 cat(" → ", test_path,  "\n", sep = "")
 cat(" → ", predictor_path, "\n", sep = "")
 
+# --- CLEAN UP OBJECTS NOT NEEDED AFTER EXPORT --------------------------------
+rm(
+  train_export, test_export,            # big matrices
+  train_path, test_path, predictor_path,
+  feature_df_train, feature_vars,       # only used to detect constant_cols
+  all_windows_with_features,            # full dataset (train/test already created)
+  train_df, test_df,                    # we have X_train/X_test/y_train/y_test
+  all_ids, train_ids, test_ids,         # split ids no longer needed
+  export_dir                            # path no longer needed
+)
+gc(verbose = FALSE)
+
 # ---------------------------------------------------------------------
-# 5) Bayesian Optimization hyperparameter search
+# 5) Hyperparameter search (Bayesian Optimization) with class weights
 # ---------------------------------------------------------------------
 
 xgb_hyperparameter_search <- function(
-    X, y, w,
+    X,
+    y,
+    w,
     nfold = 3,
     init_points = 4,
     n_iter = 6,
@@ -179,7 +208,8 @@ xgb_hyperparameter_search <- function(
   y <- as.integer(y)
   dtrain <- xgb.DMatrix(data = X, label = y, weight = w)
   
-  xgb_cv_bayes <- function(max_depth, eta, gamma, min_child_weight, subsample, colsample_bytree) {
+  xgb_cv_bayes <- function(max_depth, eta, gamma, min_child_weight,
+                           subsample, colsample_bytree) {
     
     params <- list(
       booster          = "gbtree",
@@ -208,25 +238,23 @@ xgb_hyperparameter_search <- function(
       error = function(e) NULL
     )
     
-    # REQUIRED: objective must always return a scalar Score
+    # Always return a scalar Score and an integer Pred
     if (is.null(cv) || is.null(cv$evaluation_log) || nrow(cv$evaluation_log) == 0L) {
-      return(list(Score = -1e6 + runif(1, -1e-3, 1e-3), Pred = 1L))
+      return(list(Score = -1e6, Pred = 1L))
     }
     
-    # If best_iteration is missing, fall back to the min test loss row
-    if (is.null(cv$best_iteration) || !is.finite(cv$best_iteration)) {
-      j <- which.min(cv$evaluation_log$test_mlogloss_mean)
-      val <- cv$evaluation_log$test_mlogloss_mean[j]
-      if (!is.finite(val)) return(list(Score = -1e6 + runif(1, -1e-3, 1e-3), Pred = 1L))
-      return(list(Score = -val, Pred = as.integer(j)))
+    best_it <- cv$best_iteration
+    if (is.null(best_it) || !is.finite(best_it)) {
+      best_it <- which.min(cv$evaluation_log$test_mlogloss_mean)
     }
     
-    val <- cv$evaluation_log$test_mlogloss_mean[cv$best_iteration]
-    if (!is.finite(val) || length(val) == 0L) {
-      return(list(Score = -1e6 + runif(1, -1e-3, 1e-3), Pred = 1L))
+    val <- cv$evaluation_log$test_mlogloss_mean[best_it]
+    
+    if (length(val) == 0L || !is.finite(val)) {
+      return(list(Score = -1e6, Pred = as.integer(best_it)))
     }
     
-    list(Score = -val, Pred = as.integer(cv$best_iteration))
+    list(Score = -as.numeric(val), Pred = as.integer(best_it))
   }
   
   bounds <- list(
@@ -262,14 +290,15 @@ if (file.exists(best_param_path) && !isTRUE(FORCE_RERUN)) {
     nfold = 3,
     init_points = 4,
     n_iter = 6,
-    nrounds_max = 250,
-    nthread = 8
+    nrounds_max = 250, 
+    nthread          = 8 
   )
   
   best_params <- opt_res$Best_Par
   cat("\nBest parameters:\n")
   print(best_params)
   
+  # Save hyperparameters for future runs
   saveRDS(best_params, best_param_path)
   cat("[09] Saved best_params → ", best_param_path, "\n", sep = "")
 }
@@ -291,34 +320,49 @@ params_final <- list(
   min_child_weight = best_params["min_child_weight"],
   subsample        = best_params["subsample"],
   colsample_bytree = best_params["colsample_bytree"],
-  nthread          = 8
+  nthread          = 8 #max(1, detectCores() - 1)
 )
 
-cv_final <- tryCatch(
-  xgb.cv(
-    params                = params_final,
-    data                  = dtrain_final,
-    nrounds               = 1000,
-    nfold                 = 3,
-    verbose               = FALSE,
-    early_stopping_rounds = 15
-  ),
-  error = function(e) NULL
+cv_final <- xgb.cv(
+  params                = params_final,
+  data                  = dtrain_final,
+  nrounds               = 1000,
+  nfold                 = 3,
+  verbose               = FALSE,
+  early_stopping_rounds = 15
 )
+
+
+# ------------------------------------------------------------
+# Robust best_nrounds selection (handles NULL best_iteration)
+# ------------------------------------------------------------
 
 if (is.null(cv_final) || is.null(cv_final$evaluation_log) || nrow(cv_final$evaluation_log) == 0L) {
-  stop("[09] Final CV failed; cannot select best_nrounds. Inspect features for NA/Inf and label distribution.")
+  stop("[09] CV returned no evaluation_log; cannot choose nrounds. Investigate earlier CV warnings/errors.")
 }
 
+elog <- cv_final$evaluation_log
+
+# Prefer explicit best_iteration if present
 best_nrounds <- cv_final$best_iteration
 
-# REQUIRED: if best_iteration is NULL, pick the iteration with min test loss
-if (is.null(best_nrounds) || !is.finite(best_nrounds)) {
-  best_nrounds <- which.min(cv_final$evaluation_log$test_mlogloss_mean)
+# Fallback: choose iteration with minimum test loss
+if (is.null(best_nrounds) || length(best_nrounds) == 0L || !is.finite(best_nrounds)) {
+  if (!("test_mlogloss_mean" %in% names(elog))) {
+    stop("[09] evaluation_log missing test_mlogloss_mean; cannot select best iteration.")
+  }
+  j <- which.min(elog$test_mlogloss_mean)
+  if (length(j) == 0L || !is.finite(j)) {
+    stop("[09] Cannot select best iteration: test_mlogloss_mean is empty/non-finite.")
+  }
+  best_nrounds <- j
 }
 
 best_nrounds <- as.integer(best_nrounds)
+
 cat("\nSelected best nrounds:", best_nrounds, "\n")
+
+
 
 final_model <- xgb.train(
   params  = params_final,
@@ -335,8 +379,9 @@ dtest     <- xgb.DMatrix(X_test)
 pred_prob <- predict(final_model, dtest)
 
 num_classes <- length(unique(y_train))
+
 pred_mat   <- matrix(pred_prob, ncol = num_classes, byrow = TRUE)
-pred_class <- max.col(pred_mat) - 1L
+pred_class <- max.col(pred_mat) - 1L   # convert back to {0,1,2}
 
 conf_mat <- table(Pred = pred_class, True = y_test)
 cat("\nConfusion matrix (", label_col, "):\n", sep = "")
@@ -346,7 +391,7 @@ accuracy <- sum(diag(conf_mat)) / sum(conf_mat)
 cat("\nHeld-out accuracy for", label_col, ":", round(accuracy, 4), "\n")
 
 # ---------------------------------------------------------------------
-# 8) Save model + metadata
+# 8) Save model + metadata (including class_weights)
 # ---------------------------------------------------------------------
 
 xgb.save(final_model, model_path)
@@ -354,18 +399,16 @@ xgb.save(final_model, model_path)
 meta_xgb <- list(
   predictor_cols = predictor_cols,
   constant_cols  = constant_cols,
-  split_seed     = split_meta$split_seed,
+  split_seed     = split_seed,
   label_id       = LABEL_ID,
   label_col      = label_col,
   tag            = TAG,
   features_file  = features_file,
   class_counts   = class_counts,
-  class_weights  = class_weights,
-  best_nrounds   = best_nrounds
+  class_weights  = class_weights
 )
 
 saveRDS(meta_xgb, meta_path)
 
 cat("\nSaved model to ", model_path, "\n", sep = "")
 cat("Saved metadata to ", meta_path, "\n", sep = "")
-
